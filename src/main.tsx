@@ -91,7 +91,20 @@ const Root = () => {
 						}
 					}
 				} else {
-					setPag(<Setup />);
+					// localStorage was wiped (e.g. school accounts with session-only
+					// cookie policy). Check if OPFS already has system files — if so,
+					// the user already completed setup, just restore the flag silently.
+					const alreadyInstalled = await fileExists("/system/etc/terbium/settings.json");
+					if (alreadyInstalled) {
+						localStorage.setItem("setup", "true");
+						if (sessionStorage.getItem("logged-in") === "true") {
+							setPag(<App />);
+						} else {
+							setPag(<Login />);
+						}
+					} else {
+						setPag(<Setup />);
+					}
 				}
 			};
 			upd();
