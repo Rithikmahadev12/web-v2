@@ -21,14 +21,6 @@ export function TServer() {
 
 	const port = Number.parseInt(process.env.PORT || "8080", 10);
 
-	// COOP is needed for crossOriginIsolated. We intentionally omit COEP here
-	// because credentialless is not supported on older/managed Chrome versions
-	// (e.g. school accounts) and require-corp breaks cross-origin app iframes.
-	app.use("*", async (c, next) => {
-		c.header("Cross-Origin-Opener-Policy", "same-origin");
-		await next();
-	});
-
 	app.use(
 		"*",
 		cors({
@@ -145,6 +137,7 @@ export function TServer() {
       \x1b[38;2;50;174;98m^&@@@?      B@@@@@@@@&B5~
     `);
 	});
+
 	async function nodeHandler(req: IncomingMessage, res: ServerResponse) {
 		const proto = (req.socket as any).encrypted ? "https" : "http";
 		const host = req.headers.host || "localhost";
