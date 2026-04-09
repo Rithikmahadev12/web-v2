@@ -82,12 +82,13 @@ export async function BuildApps() {
 		} else {
 			const hash = stdout.trim();
 			exec("git remote get-url origin", (remoteError, remoteStdout, remoteStderr) => {
-				const repoUrl = remoteStdout.trim();
-				const data = { hash, repository: repoUrl.replace("https://github.com/", "") };
 				if (remoteError || remoteStderr) {
-					consola.error("Failed to get repository URL");
-					fs.writeFileSync(path.join(__dirname, "./src/hash.json"), JSON.stringify({ hash: null, repository: null }, null, 2), "utf-8");
+					// Do NOT overwrite hash.json here — keeping the real commit hash
+					// is critical. Writing null causes an infinite update loop in the browser.
+					consola.warn("Could not get remote URL, keeping existing hash.json.");
 				} else {
+					const repoUrl = remoteStdout.trim();
+					const data = { hash, repository: repoUrl.replace("https://github.com/", "") };
 					fs.writeFileSync(path.join(__dirname, "./src/hash.json"), JSON.stringify(data, null, 2), "utf-8");
 					consola.success(`Git hash and repo saved to ${path.join(__dirname, "./src/hash.json")}`);
 				}
