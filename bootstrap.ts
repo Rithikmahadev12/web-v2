@@ -5,7 +5,7 @@ import consola from "consola";
 import { TServer } from "./server";
 import { version } from "./package.json";
 import open from "open";
-import { exec } from "child_process";
+import { exec, execSync } from "child_process";
 import AdmZip from "adm-zip";
 
 const isCI = !process.stdout.isTTY;
@@ -75,26 +75,29 @@ export async function BuildApps() {
 		fs.existsSync(outputJsonPath) || fs.writeFileSync(outputJsonPath, "[]", "utf-8"),
 		fs.writeFileSync(outputJsonPath, JSON.stringify(result, null, 2), "utf-8"),
 		consola.success(`Aggregated JSON saved to ${outputJsonPath}`);
-	exec("git rev-parse HEAD", (error, stdout, stderr) => {
-		if (error || stderr) {
-			consola.error("Failed to get git commit hash");
-			fs.writeFileSync(path.join(__dirname, "./src/hash.json"), JSON.stringify({ hash: "2b14b5", repository: "matriarchs/web-v2" }, null, 2), "utf-8");
-		} else {
-			const hash = stdout.trim();
-			exec("git remote get-url origin", (remoteError, remoteStdout, remoteStderr) => {
-				if (remoteError || remoteStderr) {
-					// Do NOT overwrite hash.json here — keeping the real commit hash
-					// is critical. Writing null causes an infinite update loop in the browser.
-					consola.warn("Could not get remote URL, keeping existing hash.json.");
-				} else {
-					const repoUrl = remoteStdout.trim();
-					const data = { hash, repository: repoUrl.replace("https://github.com/", "") };
-					fs.writeFileSync(path.join(__dirname, "./src/hash.json"), JSON.stringify(data, null, 2), "utf-8");
-					consola.success(`Git hash and repo saved to ${path.join(__dirname, "./src/hash.json")}`);
-				}
-			});
+	// Use execSync so hash.json is written BEFORE vite build runs.
+	// Async exec callbacks fire after bootstrap exits, leaving hash.json missing.
+	try {
+		const hashVal = execSync("git rev-parse HEAD", { stdio: ["pipe", "pipe", "pipe"] }).toString().trim();
+		let repoVal = "matriarchs/web-v2";
+		try {
+			repoVal = execSync("git remote get-url origin", { stdio: ["pipe", "pipe", "pipe"] })
+				.toString().trim()
+				.replace("https://github.com/", "")
+				.replace(".git", "");
+		} catch {
+			consola.warn("Could not get remote URL, using default repository name.");
 		}
-	});
+		fs.writeFileSync(path.join(__dirname, "./src/hash.json"), JSON.stringify({ hash: hashVal, repository: repoVal }, null, 2), "utf-8");
+		consola.success(`Git hash and repo saved to ${path.join(__dirname, "./src/hash.json")}`);
+	} catch {
+		// Write a stable fallback — never write null or it causes an infinite
+		// update loop (null in hash.cache reads back as string "null" which
+		// never equals JS null, so the updater loops forever).
+		const fallbackHash = Date.now().toString(36);
+		consola.warn(`Could not get git hash, writing fallback hash: ${fallbackHash}`);
+		fs.writeFileSync(path.join(__dirname, "./src/hash.json"), JSON.stringify({ hash: fallbackHash, repository: "matriarchs/web-v2" }, null, 2), "utf-8");
+	}
 	return true;
 }
 
