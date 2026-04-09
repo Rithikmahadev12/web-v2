@@ -77,7 +77,11 @@ const Root = () => {
 					sha = hash;
 				}
 				if (localStorage.getItem("setup")) {
-					if (localStorage.getItem("setup") && (sha !== hash || sessionStorage.getItem("migrateFs"))) {
+					// Guard: if hash is null/empty (e.g. git failed on CI), never trigger
+					// the updater — doing so causes an infinite reload loop because null
+					// can never be written to hash.cache and read back as equal to null.
+					const hashValid = hash !== null && hash !== undefined && hash !== "null" && hash !== "";
+					if (hashValid && (sha !== hash || sessionStorage.getItem("migrateFs"))) {
 						setPag(<Updater />);
 					} else {
 						if (sessionStorage.getItem("logged-in") && sessionStorage.getItem("logged-in") === "true") {
