@@ -16,10 +16,19 @@ export function TServer() {
 	const __filename = fileURLToPath(import.meta.url);
 	const __dirname = path.dirname(__filename);
 
-	console.log("Starting Terbium...");
+	console.log("Starting Matriarchs...");
 	const app = new Hono();
 
 	const port = Number.parseInt(process.env.PORT || "8080", 10);
+
+	// Required for SharedArrayBuffer (used by proxy workers like Scramjet/Epoxy).
+	// Without these two headers the browser blocks SharedArrayBuffer entirely,
+	// which breaks every proxy request.
+	app.use("*", async (c, next) => {
+		c.header("Cross-Origin-Opener-Policy", "same-origin");
+		c.header("Cross-Origin-Embedder-Policy", "require-corp");
+		await next();
+	});
 
 	app.use(
 		"*",
@@ -129,9 +138,9 @@ export function TServer() {
 		console.log(`
   \x1b[38;2;50;174;98m@@@@@@@@@@@@@@~ B@@@@@@@@#G?.
   \x1b[38;2;50;174;98mB###&@@@@&####^ #@@@&PPPB@@@G.
-  \x1b[38;2;50;174;98m .. ~@@@@J ..  .#@@@P   ~&@@@^      \x1b[38;2;60;195;240mWelcome to Terbium React v${version}
+  \x1b[38;2;50;174;98m .. ~@@@@J ..  .#@@@P   ~&@@@^      \x1b[38;2;60;195;240mWelcome to Matriarchs v${version}
       \x1b[38;2;50;174;98m^@@@@?     .#@@@@###&@@&7
-      \x1b[38;2;50;174;98m^@@@@?     .#@@@#555P&@@B7      \x1b[38;2;182;182;182mTerbium is running on ${port}
+      \x1b[38;2;50;174;98m^@@@@?     .#@@@#555P&@@B7      \x1b[38;2;182;182;182mMatriarchs is running on ${port}
       \x1b[38;2;50;174;98m^@@@@?     .#@@@P    G@@@@      \x1b[38;2;182;182;182mAny problems you encounter let us know!
       \x1b[38;2;50;174;98m^@@@@?     .#@@@&GGG#@@@@Y
       \x1b[38;2;50;174;98m^&@@@?      B@@@@@@@@&B5~
