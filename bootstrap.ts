@@ -8,19 +8,21 @@ import open from "open";
 import { exec } from "child_process";
 import AdmZip from "adm-zip";
 
-consola.info("Bootstrapping TerbiumOS [v" + version + "]");
+const isCI = !process.stdout.isTTY;
+
+consola.info("Bootstrapping Matriarchs [v" + version + "]");
 
 export default async function Bootstrap() {
 	const args = process.argv;
 	const nodever = fs.readFileSync(".node_version", "utf-8").trim();
 	if (process.version < nodever) {
-		consola.warn("Your version of Node.JS is not supported. Please update node to use Terbium. (Current version: " + process.version + ", Required version: " + nodever + " or higher)");
+		consola.warn("Your version of Node.JS is not supported. Please update node to use Matriarchs. (Current version: " + process.version + ", Required version: " + nodever + " or higher)");
 	}
 	await BuildApps();
 	await CreateAppsPaths();
 	if (!fs.existsSync(".env")) await CreateEnv();
 	await Updater();
-	consola.success("TerbiumOS bootstrapped successfully");
+	consola.success("Matriarchs bootstrapped successfully");
 	if (!(args.includes("--apps-only") || args.includes("--dev"))) {
 		TServer();
 	}
@@ -76,7 +78,7 @@ export async function BuildApps() {
 	exec("git rev-parse HEAD", (error, stdout, stderr) => {
 		if (error || stderr) {
 			consola.error("Failed to get git commit hash");
-			fs.writeFileSync(path.join(__dirname, "./src/hash.json"), JSON.stringify({ hash: "2b14b5", repository: "terbiumos/web-v2" }, null, 2), "utf-8");
+			fs.writeFileSync(path.join(__dirname, "./src/hash.json"), JSON.stringify({ hash: "2b14b5", repository: "matriarchs/web-v2" }, null, 2), "utf-8");
 		} else {
 			const hash = stdout.trim();
 			exec("git remote get-url origin", (remoteError, remoteStdout, remoteStderr) => {
@@ -146,6 +148,23 @@ export async function CreateAppsPaths() {
 }
 
 export async function CreateEnv() {
+	// In CI/non-TTY environments (e.g. Render), skip all prompts and use
+	// env vars or safe defaults so the build doesn't crash.
+	if (isCI) {
+		consola.info("Non-interactive environment detected — generating .env from environment variables or defaults.");
+		const port = process.env.PORT || "3000";
+		const masqr = process.env.MASQR || "false";
+		if (masqr === "true") {
+			const licenseServer = process.env.LICENSE_SERVER_URL || "";
+			const whitelist = process.env.WHITELISTED_DOMAINS || "";
+			fs.writeFileSync(".env", `MASQR=true\nPORT=${port}\nLICENSE_SERVER_URL=${licenseServer}\nWHITELISTED_DOMAINS=${whitelist}\n`);
+		} else {
+			fs.writeFileSync(".env", `MASQR=false\nPORT=${port}\n`);
+		}
+		consola.success("Environment file created from environment variables");
+		return true;
+	}
+
 	const port =
 		(await consola.prompt("Enter a port for the server to run on (3000): ", {
 			type: "text",
@@ -171,36 +190,42 @@ export async function CreateEnv() {
 }
 
 export async function Updater() {
+	// Skip update check entirely in CI — no TTY for prompts and no need to auto-update on a build server
+	if (isCI) {
+		consola.info("Skipping update check in non-interactive environment.");
+		return true;
+	}
+
 	consola.start("Checking for updates...");
 	exec("git remote get-url origin", async (remoteError, remoteStdout, remoteStderr) => {
 		if (remoteError || remoteStderr) {
 			consola.error("Failed to get local repository URL");
 			return;
 		}
-		const repo = `https://raw.githubusercontent.com/${remoteStdout.trim().replace("https://github.com/", "").replace(".git", "")}/refs/heads/main/package.json` || "https://raw.githubusercontent.com/TerbiumOS/web-v2/refs/heads/main/package.json";
+		const repo = `https://raw.githubusercontent.com/${remoteStdout.trim().replace("https://github.com/", "").replace(".git", "")}/refs/heads/main/package.json` || "https://raw.githubusercontent.com/Rithikmahadev12/web-v2/refs/heads/main/package.json";
 		try {
 			const response = await fetch(repo);
 			const ver = (await response.json()).version;
 			if (ver > version) {
-				const res = await consola.prompt(`A new version of Terbium is available. Would you like to download it? (New Version: ${ver}, Current: ${version})`, {
+				const res = await consola.prompt(`A new version of Matriarchs is available. Would you like to download it? (New Version: ${ver}, Current: ${version})`, {
 					type: "confirm",
 				});
 				if (res) {
 					consola.info("Downloading new version...");
 					exec("git pull", async (remoteError, remoteStdout, remoteStderr) => {
 						if (remoteError || remoteStderr) {
-							consola.error("Failed to update Terbium, Please update manually");
+							consola.error("Failed to update Matriarchs, Please update manually");
 							open(`${remoteStdout.trim()}/releases/latest`);
 							return;
 						}
-						consola.success("Terbium updated successfully");
+						consola.success("Matriarchs updated successfully");
 						await BuildApps();
 						await CreateAppsPaths();
 					});
 					return;
 				} else return;
 			} else {
-				consola.success("Terbium is up to date");
+				consola.success("Matriarchs is up to date");
 			}
 		} catch (e) {
 			consola.error(`Failed to check for updates, ${e}`);
