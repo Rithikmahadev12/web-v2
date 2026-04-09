@@ -10,7 +10,8 @@ import Loader from "./Loading.tsx";
 import Login from "./Login.tsx";
 import Recovery from "./Recovery.tsx";
 import Setup from "./Setup.tsx";
-import { fileExists } from "./sys/types.ts";
+import { fileExists, dirExists } from "./sys/types.ts";
+import { copyfs } from "./init/fs.init.ts";
 import Updater from "./Updater.tsx";
 
 const Root = () => {
@@ -84,6 +85,20 @@ const Root = () => {
 					if (hashValid && (sha !== hash || sessionStorage.getItem("migrateFs"))) {
 						setPag(<Updater />);
 					} else {
+						// Health check: if setup is marked done but /apps/system/ is empty,
+						// the initial file copy failed (e.g. school network blocked fetches).
+						// Re-run copyfs silently before going to Login so apps actually work.
+						const appsHealthy = await fileExists("/apps/system/settings.tapp/index.html")
+							|| await fileExists("/apps/system/files.tapp/index.html")
+							|| await dirExists("/apps/system/terminal.tapp");
+						if (!appsHealthy) {
+							console.warn("App files missing from OPFS, re-running copyfs...");
+							if (!(await dirExists("/apps/system"))) {
+								await window.tb.fs.promises.mkdir("/apps");
+								await window.tb.fs.promises.mkdir("/apps/system");
+							}
+							await copyfs();
+						}
 						if (sessionStorage.getItem("logged-in") && sessionStorage.getItem("logged-in") === "true") {
 							setPag(<App />);
 						} else {
