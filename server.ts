@@ -21,12 +21,11 @@ export function TServer() {
 
 	const port = Number.parseInt(process.env.PORT || "8080", 10);
 
-	// Required for SharedArrayBuffer (used by proxy workers like Scramjet/Epoxy).
-	// Without these two headers the browser blocks SharedArrayBuffer entirely,
-	// which breaks every proxy request.
+	// COOP is needed for crossOriginIsolated. We intentionally omit COEP here
+	// because credentialless is not supported on older/managed Chrome versions
+	// (e.g. school accounts) and require-corp breaks cross-origin app iframes.
 	app.use("*", async (c, next) => {
 		c.header("Cross-Origin-Opener-Policy", "same-origin");
-		c.header("Cross-Origin-Embedder-Policy", "credentialless");
 		await next();
 	});
 
