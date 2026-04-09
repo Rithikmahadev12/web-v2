@@ -26,7 +26,7 @@ export function TServer() {
 	// which breaks every proxy request.
 	app.use("*", async (c, next) => {
 		c.header("Cross-Origin-Opener-Policy", "same-origin");
-		c.header("Cross-Origin-Embedder-Policy", "require-corp");
+		c.header("Cross-Origin-Embedder-Policy", "credentialless");
 		await next();
 	});
 
